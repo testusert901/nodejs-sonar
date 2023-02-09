@@ -106,7 +106,7 @@ get.prototype.chunk = async function (chunk) {
             check_invoice_total_val1 = getInvoiceTotalV1(item, check_invoice_total_val1);
             
             // setting the second part of the condition for invoice total validation
-            check_invoice_total_val2 = getInvoiceTotalV2(item, check_invoice_total_val2); 
+            check_invoice_total_val2 = getInvoiceTotalV2(item); 
             
 
             // condition for accessing the Brazil currency convertion before the invoice total validation
@@ -166,13 +166,10 @@ get.prototype.chunk = async function (chunk) {
             console.log("GT - 1");
             console.log(item.grand_total);
 
-            var promotions = "";
+            
             var erp = event.requestContext.authorizer.erp;
             erp = erp.toUpperCase();
-
-            if (item.applied_rule_ids != "" && item.applied_rule_ids != undefined) {
-                //    promotions = item.applied_rule_ids;
-            }
+            
             item.order_items.forEach(function (order_item, idx) {
                 if (order_item.qty_shipped == 0) {
                     if (order_item.parent_item_id) {
@@ -448,12 +445,12 @@ function getInvoiceTotalV1(item, calc_invoice_total_val1){
     return calc_invoice_total_val1;
 }
 
-function getInvoiceTotalV2(item, calc_invoice_total_val2){
-    check_discount_amount = discountCalculation(item);
-    console.log("check_discount_amount = "+check_discount_amount);
+function getInvoiceTotalV2(item){
+    var check_discount_amount_val = discountCalculation(item);
+    console.log("check_discount_amount = "+check_discount_amount_val);
     console.log("subtotal_invoiced = "+parseFloat(item.subtotal_invoiced));
     console.log("shipping_amount = "+parseFloat(item.shipping_amount));
-    calc_invoice_total_val2 = parseFloat(item.subtotal_invoiced) + parseFloat(item.shipping_amount) - check_discount_amount;
+    var calc_invoice_total_val2 = parseFloat(item.subtotal_invoiced) + parseFloat(item.shipping_amount) - check_discount_amount_val;
     console.log("calc_invoice_total_val2 = "+calc_invoice_total_val2);
     return calc_invoice_total_val2;
 }
