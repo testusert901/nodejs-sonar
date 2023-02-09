@@ -491,7 +491,7 @@ function shouldSkipInvoice(item,check_invoice_total_val1,check_invoice_total_val
         console.log("before skip continue;");
         return true;           
     }
-    return false;
+    return false; 
 }
 //*********Invoice Validations************
 
