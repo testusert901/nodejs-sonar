@@ -253,7 +253,9 @@ get.prototype.chunk = async function (chunk) {
                 //After processing, removing the transaction notification from the api response.
                 delete item.transaction_notification;
 
-                var cc_type="";
+                var cc_type = "";
+                var type_card = "";
+                var terminal = "";
                 var credit_card_number = transaction_item.cc_last_4;
                 if(!credit_card_number){
                     credit_card_number = transaction_item.additional_information.card_number?transaction_item.additional_information.card_number:transaction_item.additional_information.adyen_card_bin;
@@ -403,13 +405,9 @@ get.prototype.chunk = async function (chunk) {
 
 
         //remove not paided lines
-        for (var i=0; i<invoices.items[0].items.length;i++){
-            console.log("len 3");
-            if(invoices.items[0].items[i].hasOwnProperty('payment') && invoices.items[0].items[i].payment.length>0 ){ //*********Invoice Validations************//
-                console.log("len 4");
-                result.items.push(invoices.items[0].items[i]);
-            }else if(invoices.items[0].items[i].customer_balance_invoice >0){
-                result.items.push(invoices.items[0].items[i]);
+        for (const element of invoices.items[0].items){            
+            if((element.hasOwnProperty('payment') && element.payment.length > 0) || (element.customer_balance_invoice > 0 )){//*********Invoice Validations************//                
+                result.items.push(element);
             }
         }
 
@@ -425,7 +423,7 @@ get.prototype.chunk = async function (chunk) {
 function discountCalculation(item){
     var check_discount_amt = 0;
     check_discount_amt = 0;
-    item.order_items.forEach(function (order_item, idx) {
+    item.order_items.forEach(function (order_item) {
         if (order_item.qty_shipped != 0) {
             check_discount_amt += (order_item.qty_shipped * order_item.base_discount_amount) / order_item.qty_ordered;
         }
@@ -440,58 +438,49 @@ function getInvoiceTotalV1(item, calc_invoice_total_val1){
     }else{
         calc_invoice_total_val1 = parseFloat(item.total_paid);
     }    
-    calc_invoice_total_val1 = calc_invoice_total_val1.toFixed(2);
-    console.log("calc_invoice_total_val1 = "+calc_invoice_total_val1);
+    calc_invoice_total_val1 = calc_invoice_total_val1.toFixed(2);    
     return calc_invoice_total_val1;
 }
 
 function getInvoiceTotalV2(item){
-    var check_discount_amount_val = discountCalculation(item);
-    console.log("check_discount_amount = "+check_discount_amount_val);
-    console.log("subtotal_invoiced = "+parseFloat(item.subtotal_invoiced));
-    console.log("shipping_amount = "+parseFloat(item.shipping_amount));
-    var calc_invoice_total_val2 = parseFloat(item.subtotal_invoiced) + parseFloat(item.shipping_amount) - check_discount_amount_val;
-    console.log("calc_invoice_total_val2 = "+calc_invoice_total_val2);
-    return calc_invoice_total_val2;
+    var check_discount_amount_val = discountCalculation(item);   
+    return parseFloat(item.subtotal_invoiced) + parseFloat(item.shipping_amount) - check_discount_amount_val;
 }
 
 function getBrazilCurencyConverson(item, calc_invoice_total_val2,calc_charged_rate){
-           
-            if(item.charged_currency == "BRL" && calc_charged_rate > 0){               
-                calc_invoice_total_val2 = ((calc_invoice_total_val2) * (calc_charged_rate));
-                calc_invoice_total_val2 = calc_invoice_total_val2.toFixed(2);
-            }else{                   
-                calc_invoice_total_val2 = calc_invoice_total_val2.toFixed(2);  
-            }
-            return calc_invoice_total_val2;
+    if(item.charged_currency == "BRL" && calc_charged_rate > 0){               
+        calc_invoice_total_val2 = ((calc_invoice_total_val2) * (calc_charged_rate));
+        calc_invoice_total_val2 = calc_invoice_total_val2.toFixed(2);
+    }else{                   
+        calc_invoice_total_val2 = calc_invoice_total_val2.toFixed(2);  
+    }
+    return calc_invoice_total_val2;
 }
 
 function getInvoiceTotalDiff(item,calc_invoice_total_val1,calc_invoice_total_val2,calc_charged_rate,decimal_margin_val){
     var calc_diff_invoice_total = 0;
     if(item.charged_currency == "BRL" && calc_charged_rate > 0){ 
         calc_diff_invoice_total = calc_invoice_total_val2 - calc_invoice_total_val1;
-        calc_diff_invoice_total = diff_invoice_total.toFixed(2);              
-        if(calc_diff_invoice_total <= 0.01){  // Positive margin              
+        calc_diff_invoice_total = calc_diff_invoice_total.toFixed(2);              
+        if((calc_diff_invoice_total <= 0.01) && (calc_diff_invoice_total >= -0.01)){                
             calc_diff_invoice_total = decimal_margin_val;
-        }else if(calc_diff_invoice_total >= -0.01){ //negative margin
-            calc_diff_invoice_total = decimal_margin_val;
-        }
+        } 
     }    
     return calc_diff_invoice_total;
 }
 
-function shouldSkipInvoice(item,check_invoice_total_val1,check_invoice_total_val2,check_charged_rate,diff_invoice_total,decimal_margin_val){
-    console.log("***** Before skipping the invoice (order : "+item.increment_id+") as subtotal_invoiced + shipping_amount + discount_amount ("+check_invoice_total_val2+") != item.total_paid("+item.total_paid+") + item.customer_balance_invoiced("+item.customer_balance_invoiced+") which is ("+(check_invoice_total_val1)+")*****");
-    if( (item.total_paid != item.total_invoiced) || (check_invoice_total_val2 != check_invoice_total_val1 ) ){
+function shouldSkipInvoice(item, calc_invoice_total_val1, calc_invoice_total_val2, calc_charged_rate, calc_diff_invoice_total, decimal_margin_val){
+    console.log("***** Before skipping the invoice (order : "+item.increment_id+") as subtotal_invoiced + shipping_amount + discount_amount ("+calc_invoice_total_val2+") != item.total_paid("+item.total_paid+") + item.customer_balance_invoiced("+item.customer_balance_invoiced+") which is ("+(calc_invoice_total_val1)+")*****");
+    if( (item.total_paid != item.total_invoiced) || (calc_invoice_total_val2 != calc_invoice_total_val1 ) ){
         console.log("skipping the invoice (order : "+item.increment_id+") as total_paid("+item.total_paid+") != item.total_invoiced("+item.total_invoiced+") OR ");
-        console.log("skipping the invoice (order : "+item.increment_id+") as subtotal_invoiced + shipping_amount + discount_amount ("+check_invoice_total_val2+") != item.total_paid("+item.total_paid+") + item.customer_balance_invoiced("+item.customer_balance_invoiced+") which is ("+(check_invoice_total_val1)+")");
-        if((item.charged_currency == "BRL" && check_charged_rate > 0) && diff_invoice_total > decimal_margin_val){
+        console.log("skipping the invoice (order : "+item.increment_id+") as subtotal_invoiced + shipping_amount + discount_amount ("+calc_invoice_total_val2+") != item.total_paid("+item.total_paid+") + item.customer_balance_invoiced("+item.customer_balance_invoiced+") which is ("+(calc_invoice_total_val1)+")");
+        if((item.charged_currency == "BRL" && calc_charged_rate > 0) && calc_diff_invoice_total > decimal_margin_val){
             return true; //will skip the invoice, if the above condition is true.
         }
         console.log("before skip continue;");
         return true;           
     }
-    return false; 
+    return false;
 }
 //*********Invoice Validations************
 
