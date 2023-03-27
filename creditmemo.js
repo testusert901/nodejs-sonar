@@ -13,14 +13,14 @@ get.prototype.path = function (event) {
 };
 
 get.prototype.chunk = function (chunk){
-    var creditMemos = "";
-    var dataTemplate = "";
-    var creditMemosTemplate = "";
-    var data = "";
-    var itemTemplate = "";
-    var cms = "";
-    var subItemData = "";
-
+    let creditMemos = "";
+    let dataTemplate = "";
+    let creditMemosTemplate = "";
+    let data = "";
+    let itemTemplate = "";
+    let cms = "";
+    let subItemData = "";
+    let cmIndex = 0;
     try {
         creditMemos = validator.parseChunk(chunk);
     }catch (err) {     
@@ -33,7 +33,7 @@ get.prototype.chunk = function (chunk){
          data = JSON.parse(dataTemplate).data;
          itemTemplate = "{\"item\":{\"sku\":\"\",\"qty_refunded\":\"\",\"row_total_incl_tax\":\"\",\"tax_amount\":\"\"}}";
         
-        var cmIndex = 0;
+        cmIndex = 0;
         if (creditMemos.items && creditMemos.items[0]) {
             creditMemos.items.forEach(function (item) {                
                 cms = JSON.parse(creditMemosTemplate);                
@@ -58,7 +58,7 @@ get.prototype.chunk = function (chunk){
                 cmIndex++;            
             });
         } 
-        var response = {
+        let response = {
             "success": true,       
             "data": data
         }
