@@ -12,7 +12,7 @@ exports.handler =  async function (event) {
     let sqsParams = "";
     let sqsResponse = "";    
     let validateEventMsg = validate(storeCode);
-    if(validateEventMsg === true){
+    if(validateEventMsg == "TRUE"){
         console.log("storeCode : "+storeCode);
         result = storeCode.includes(",") ? "TRUE" : "FALSE";
         console.log("result :"+ result);   
@@ -69,6 +69,6 @@ function validate(storeCode){
         errorMsg =  errHandler.processMessage(msg);
         return errorMsg;
     }else{
-        return true;
+        return "TRUE";
     }
 }
