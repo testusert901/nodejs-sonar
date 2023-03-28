@@ -7,17 +7,17 @@ const fs = require('fs');
 const s3 = new AWS.S3();
 const dayjs = require('dayjs')
 const date = new Date();
-var sqs = new AWS.SQS({apiVersion: '2012-11-05'});
+const sqs = new AWS.SQS({apiVersion: '2012-11-05'});
 
 exports.handler =  async function (event) {   
     console.log("Begins SQS queue data processing....");    
     let storeCode  =  "";
     let params = "";
     let fileName = "";
-    let foutput = "";
-    let fData = "";
+    let fileOutput = "";
+    let fileData = "";
     let validateEventMsg = "";
-    let scanResponse = "";
+    let queryResponse = "";
     if(event.hasOwnProperty('Records')){          
         for (const element of event.Records) {
             if((element.body !== "" && element.body !== null)){
@@ -27,11 +27,11 @@ exports.handler =  async function (event) {
                 if(validateEventMsg == "TRUE"){
                     fileName = storeCode+"_promotion_"+dayjs().format(`YYYYMMDDHHmmss`)+".csv";        
                     params = getParams(storeCode);            
-                    scanResponse =  await dynamodb.query(params).promise(); 
-                    fData = generateFileData(scanResponse.Items);
-                    foutput = await createCSV(fData);
-                    await putCSVToS3(process.env.BUCKET,fileName,foutput);
-                    await putObjectToSFTP(fileName, foutput);         
+                    queryResponse =  await dynamodb.query(params).promise(); 
+                    fileData = generateFileData(queryResponse.Items);
+                    fileOutput = await createCSV(fileData);
+                    await putCSVToS3(process.env.BUCKET,fileName,fileOutput);
+                    await putObjectToSFTP(fileName, fileOutput);         
                     console.log("Processing Completed !!! fileName is "+ fileName );                    
                     console.log("Deleting the message from the barcode SQS queue as it is succesffully processed.");
                     let deleteParams = {
@@ -51,6 +51,7 @@ exports.handler =  async function (event) {
     }     
 };
 
+// build parameters to get data for promotion table
 function getParams(storeIdentifier){
   
     let params = "";    
@@ -68,36 +69,41 @@ function getParams(storeIdentifier){
     return params;
 }
 
+// Generate the csv file data
 function generateFileData(inputData){    
     let modifiedPromotions = [];
     modifiedPromotions = inputData;
-    for (let index = 0; index < modifiedPromotions.length; index++) { 
-        let localItemDesc = checkDataValue(modifiedPromotions[index],"LocalItemDescription","S");
-        let globalStoreDesc = checkDataValue(modifiedPromotions[index],"GlobalStoreDescription","S");
-        let promoTypeDesc = checkDataValue(modifiedPromotions[index],"PromotionTypeDescription","S");        
-        modifiedPromotions[index].StoreIdentifier = checkDataValue(modifiedPromotions[index],"StoreIdentifier","S");
-        modifiedPromotions[index].CampaignName = checkDataValue(modifiedPromotions[index],"CampaignName","S");
-        modifiedPromotions[index].GlobalItemCode = checkDataValue(modifiedPromotions[index],"GlobalItemCode","S");
-        modifiedPromotions[index].LocalItemCode = checkDataValue(modifiedPromotions[index],"LocalItemCode","S");
+    let index = 0;
+    for (const element of modifiedPromotions) { 
+        console.log(element);
+        console.log(JSON.stringify(element));
+        let localItemDesc = checkDataValue(element,"LocalItemDescription","S");
+        let globalStoreDesc = checkDataValue(element,"GlobalStoreDescription","S");
+        let promoTypeDesc = checkDataValue(element,"PromotionTypeDescription","S");        
+        modifiedPromotions[index].StoreIdentifier = checkDataValue(element,"StoreIdentifier","S");
+        modifiedPromotions[index].CampaignName = checkDataValue(element,"CampaignName","S");
+        modifiedPromotions[index].GlobalItemCode = checkDataValue(element,"GlobalItemCode","S");
+        modifiedPromotions[index].LocalItemCode = checkDataValue(element,"LocalItemCode","S");
         modifiedPromotions[index].LocalItemDescription = sanitizeData(localItemDesc);
         modifiedPromotions[index].GlobalStoreDescription = sanitizeData(globalStoreDesc);
         modifiedPromotions[index].PromotionTypeDescription = sanitizeData(promoTypeDesc);
-        modifiedPromotions[index].PromotionStartDate = checkDataValue(modifiedPromotions[index],"PromotionStartDate","N");
-        modifiedPromotions[index].PromotionEndDate = checkDataValue(modifiedPromotions[index],"PromotionEndDate","N");
-        modifiedPromotions[index].PromotionStatus = checkDataValue(modifiedPromotions[index],"PromotionStatus","S");
-        modifiedPromotions[index].PromotionCode = checkDataValue(modifiedPromotions[index],"PromotionCode","S");
-        modifiedPromotions[index].LocalItemCategory = checkDataValue(modifiedPromotions[index],"LocalItemCategory","S");
-        modifiedPromotions[index].DiscountType = checkDataValue(modifiedPromotions[index],"DiscountType","N");
-        modifiedPromotions[index].PromoType = checkDataValue(modifiedPromotions[index],"PromoType","N");
-        modifiedPromotions[index].PromotionType = checkDataValue(modifiedPromotions[index],"PromotionType","N");
-        modifiedPromotions[index].ConditionValue = checkDataValue(modifiedPromotions[index],"ConditionValue","N");
-        modifiedPromotions[index].ContitionType = checkDataValue(modifiedPromotions[index],"ContitionType","N");
-        modifiedPromotions[index].DiscountUnit = checkDataValue(modifiedPromotions[index],"DiscountUnit","N");
-        modifiedPromotions[index].DiscountValue = checkDataValue(modifiedPromotions[index],"DiscountValue","N");
-        modifiedPromotions[index].LayerNumber = checkDataValue(modifiedPromotions[index],"LayerNumber","S");
-        modifiedPromotions[index].PercentOff = checkDataValue(modifiedPromotions[index],"PercentOff","N");
-        modifiedPromotions[index].PriceType = checkDataValue(modifiedPromotions[index],"PriceType","S");
-        modifiedPromotions[index].RewardItem = checkDataValue(modifiedPromotions[index],"RewardItem","N");
+        modifiedPromotions[index].PromotionStartDate = checkDataValue(element,"PromotionStartDate","N");
+        modifiedPromotions[index].PromotionEndDate = checkDataValue(element,"PromotionEndDate","N");
+        modifiedPromotions[index].PromotionStatus = checkDataValue(element,"PromotionStatus","S");
+        modifiedPromotions[index].PromotionCode = checkDataValue(element,"PromotionCode","S");
+        modifiedPromotions[index].LocalItemCategory = checkDataValue(element,"LocalItemCategory","S");
+        modifiedPromotions[index].DiscountType = checkDataValue(element,"DiscountType","N");
+        modifiedPromotions[index].PromoType = checkDataValue(element,"PromoType","N");
+        modifiedPromotions[index].PromotionType = checkDataValue(element,"PromotionType","N");
+        modifiedPromotions[index].ConditionValue = checkDataValue(element,"ConditionValue","N");
+        modifiedPromotions[index].ContitionType = checkDataValue(element,"ContitionType","N");
+        modifiedPromotions[index].DiscountUnit = checkDataValue(element,"DiscountUnit","N");
+        modifiedPromotions[index].DiscountValue = checkDataValue(element,"DiscountValue","N");
+        modifiedPromotions[index].LayerNumber = checkDataValue(element,"LayerNumber","S");
+        modifiedPromotions[index].PercentOff = checkDataValue(element,"PercentOff","N");
+        modifiedPromotions[index].PriceType = checkDataValue(element,"PriceType","S");
+        modifiedPromotions[index].RewardItem = checkDataValue(element,"RewardItem","N");
+        index++;
     } 
     return modifiedPromotions;
 }
@@ -133,6 +139,7 @@ function checkDataValue(inputElement, inputKey, _valtype) {
     }    
 }
 
+// Put CSV file into ftp location
 async function putObjectToSFTP(key, data){
     try{
         let lhr_boutique_sftp_promotion_path = process.env.LHR_BOUTIQUE_SFTP_PROMOTION_PATH;
@@ -189,7 +196,7 @@ function createCSV(promotions) {
     });
 }
 
-// PUT Images into S3
+// PUT CSV files into S3
 function putCSVToS3(bucket, key, data) {
     return new Promise((resolve, reject) => {
 
