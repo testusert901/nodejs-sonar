@@ -6,7 +6,8 @@ AWS.config.apiVersions = {
 const sqs = new AWS.SQS();
 
 exports.handler =  async function (event) {
-    let storeCode  = process.env.PROMOTION_STORECODE;    
+    let storeCode  = process.env.PROMOTION_STORECODE; 
+    storeCode = storeCode.replace(/ /g, "");  // remove all unwanted space from store codes. 
     let storeCodeList = [];
     let result = "";
     let sqsParams = "";
@@ -21,22 +22,28 @@ exports.handler =  async function (event) {
             for (const element of storeCodeList){          
                 console.log(element);
                 console.log(process.env.PROMOTION_FEED_SQS_QUEUE_URL);
-                sqsParams = {
-                    DelaySeconds: 2,
-                    MessageAttributes: {
-                      "service": {
-                        DataType: "String",
-                        StringValue: "Heathrow promotion feed"
-                      },
-                    },
-                    MessageBody: element,
-                    QueueUrl: process.env.PROMOTION_FEED_SQS_QUEUE_URL
-                  };
-                  console.log(sqsParams);                                  
-                  sqsResponse = await sqs.sendMessage(sqsParams).promise();
-                  console.log(sqsResponse);
+                let validateElementMsg = validate(element);
+                if(validateElementMsg == "TRUE"){
+                    sqsParams = {
+                        DelaySeconds: 2,
+                        MessageAttributes: {
+                          "service": {
+                            DataType: "String",
+                            StringValue: "Heathrow promotion feed"
+                          },
+                        },
+                        MessageBody: element,
+                        QueueUrl: process.env.PROMOTION_FEED_SQS_QUEUE_URL
+                      };
+                      console.log(sqsParams);                                  
+                      sqsResponse = await sqs.sendMessage(sqsParams).promise();
+                      console.log(sqsResponse);
+                }else{
+                    console.log("Element level validation : "+validateElementMsg);
+                } 
+                
             }  
-        }else{            
+        }else{                       
             sqsParams = {
                 DelaySeconds: 2,
                 MessageAttributes: {
@@ -46,7 +53,7 @@ exports.handler =  async function (event) {
                   },
                 },
                 MessageBody: storeCode,
-                QueueUrl: process.env.PROMOTION_FEED_SQS_QUEUE
+                QueueUrl: process.env.PROMOTION_FEED_SQS_QUEUE_URL
               };                  
               sqsResponse = await sqs.sendMessage(sqsParams).promise();
               console.log(sqsResponse);
