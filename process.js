@@ -58,8 +58,8 @@ exports.handler =  async function (event) {
 
 //Validate the mandatory params and generate error message.
 function validate(storeCode){
-    var msg = [];
-    var errorMsg = "";   
+    let msg = [];
+    let errorMsg = "";   
 
     if ((storeCode == "") || storeCode == null ){
         msg.push("store code must not be empty");
